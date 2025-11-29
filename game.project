@@ -16,8 +16,8 @@ input_method = HiddenInputField
 scale_mode = stretch
 
 [project]
-title = ddk
+title = Defolder Developer Kit
 
 [library]
-include_dirs = /ddk
+include_dirs = ddk
 

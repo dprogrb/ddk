@@ -129,7 +129,7 @@ function M.get_commands()
             end
         },
         {
-            label = "Удалить все содержимое",
+            label = "Удалить всё содержимое",
             locations = {"Assets"},
             query = {
                 selection = { type = "resource", cardinality = "one" }
