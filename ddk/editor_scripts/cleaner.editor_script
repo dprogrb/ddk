@@ -1,0 +1,158 @@
+local M = {}
+
+local function is_script_file(path)
+    return path:match("%.lua$")
+    or path:match("%.script$")
+    or path:match("%.gui_script$")
+    or path:match("%.render_script$")
+    or path:match("%.editor_script$")
+end
+
+function M.get_commands()
+    return {
+        {
+            label = "Удалить все комментарии",
+            locations = {"Assets"},
+            query = {
+                selection = { type = "resource", cardinality = "one" }
+            },
+            active = function(opts)
+                local path = editor.get(opts.selection, "path")
+                if not path or not is_script_file(path) then
+                    return false
+                end
+
+                return editor.can_get(opts.selection, "text")
+            end,
+            run = function(opts)
+                if not editor.can_get(opts.selection, "text") then
+                    return
+                end
+
+                local text = editor.get(opts.selection, "text")
+                local lines = {}
+
+                for line in (text .. "\n"):gmatch("([^\n]*)\n") do
+                    if not line:match("^%s*%-%-") then
+                        table.insert(lines, line)
+                    end
+                end
+
+                if #lines > 0 and lines[#lines] == "" then
+                    table.remove(lines)
+                end
+
+                local new_text = table.concat(lines, "\n")
+                editor.transact({
+                    editor.tx.set(opts.selection, "text", new_text)
+                })
+            end
+        },
+        {
+            label = "Удалить все print",
+            locations = {"Assets"},
+            query = {
+                selection = { type = "resource", cardinality = "one" }
+            },
+            active = function(opts)
+                local path = editor.get(opts.selection, "path")
+                if not path or not is_script_file(path) then
+                    return false
+                end
+
+                return editor.can_get(opts.selection, "text")
+            end,
+            run = function(opts)
+                if not editor.can_get(opts.selection, "text") then
+                    return
+                end
+
+                local text = editor.get(opts.selection, "text")
+                local lines = {}
+
+                for line in (text .. "\n"):gmatch("([^\n]*)\n") do
+                    if not line:match("^%s*print%s*%(") then
+                        table.insert(lines, line)
+                    end
+                end
+
+                if #lines > 0 and lines[#lines] == "" then
+                    table.remove(lines)
+                end
+
+                local new_text = table.concat(lines, "\n")
+                editor.transact({
+                    editor.tx.set(opts.selection, "text", new_text)
+                })
+            end
+        },
+        {
+            label = "Закомментировать все print",
+            locations = {"Assets"},
+            query = {
+                selection = { type = "resource", cardinality = "one" }
+            },
+            active = function(opts)
+                local path = editor.get(opts.selection, "path")
+                if not path or not is_script_file(path) then
+                    return false
+                end
+
+                return editor.can_get(opts.selection, "text")
+            end,
+            run = function(opts)
+                if not editor.can_get(opts.selection, "text") then
+                    return
+                end
+
+                local text = editor.get(opts.selection, "text")
+                local lines = {}
+
+                for line in (text .. "\n"):gmatch("([^\n]*)\n") do
+                    -- если строка содержит print (но не уже закомментирована)
+                    if line:match("print%s*%(") and not line:match("^%s*%-%-") then
+                        -- добавляем -- в начало
+                        local indent = line:match("^(%s*)")
+                        line = indent .. "-- " .. line:sub(#indent + 1)
+                    end
+                    table.insert(lines, line)
+                end
+
+                if #lines > 0 and lines[#lines] == "" then
+                    table.remove(lines)
+                end
+
+                local new_text = table.concat(lines, "\n")
+                editor.transact({
+                    editor.tx.set(opts.selection, "text", new_text)
+                })
+            end
+        },
+        {
+            label = "Удалить все содержимое",
+            locations = {"Assets"},
+            query = {
+                selection = { type = "resource", cardinality = "one" }
+            },
+            active = function(opts)
+                local path = editor.get(opts.selection, "path")
+                if not path or not is_script_file(path) then
+                    return false
+                end
+
+                return editor.can_set(opts.selection, "text")
+            end,
+            run = function(opts)
+                if not editor.can_set(opts.selection, "text") then
+                    return
+                end
+
+                editor.transact({
+                    editor.tx.set(opts.selection, "text", "")
+                })
+            end
+        }
+    }
+end
+
+return M
