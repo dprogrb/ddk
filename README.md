@@ -4,5 +4,5 @@
 
 ## Установка
 
-Добавь в `game.project` в секцию `dependencies`: [ссылка на релизную версию]
+Добавь в `game.project` в секцию `dependencies`: [[ссылка на релизную версию]](https://github.com/dprogrb/ddk/releases/new)
 
