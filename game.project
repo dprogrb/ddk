@@ -19,5 +19,5 @@ scale_mode = stretch
 title = Defolder Developer Kit
 
 [library]
-include_dirs = ddk_tools
+include_dirs = ddk
 
