@@ -1,0 +1,186 @@
+local M = {}
+
+function M.get_commands()
+    return {
+        {
+            label = "Add PNG as Image",
+            locations = {"Assets"},
+            query = {
+                selection = {type = "resource", cardinality = "many"}
+            },
+            active = function(opts)
+                local selection = opts.selection
+                if #selection == 0 then return false end
+                for i = 1, #selection do
+                    if not string.match(editor.get(selection[i], "path"), "%.png$") then return false end
+                end
+                return true
+            end,
+            run = function(opts)
+                local selection = opts.selection
+                print("[DEBUG] === Add PNG as Image ===")
+                print("[DEBUG] Selected files count: " .. #selection)
+
+                local atlas_path = editor.ui.show_resource_dialog({
+                    title = "Select Atlas",
+                    extension = "atlas",
+                    selection_mode = "single"
+                })
+
+                if not atlas_path then
+                    print("[DEBUG] Atlas selection cancelled")
+                    return
+                end
+
+                print("[DEBUG] Selected atlas: " .. atlas_path)
+
+                -- Проверяем, может ли мы получить "images"
+                if not editor.can_get(atlas_path, "images") then
+                    print("[ERROR] Atlas does not have 'images' property!")
+                    print("[ERROR] This might not be a valid atlas file")
+                    return
+                end
+
+                local image_nodes = editor.get(atlas_path, "images") or {}
+                print("[DEBUG] Existing images in atlas: " .. #image_nodes)
+                print("[DEBUG] Type of image_nodes: " .. type(image_nodes))
+
+                local existing_images = {}
+
+                if type(image_nodes) == "table" then
+                    for i = 1, #image_nodes do
+                        local node = image_nodes[i]
+                        print("[DEBUG] Node #" .. i .. " type: " .. type(node))
+
+                        if editor.can_get(node, "image") then
+                            local img_path = editor.get(node, "image")
+                            existing_images[img_path] = true
+                            print("[DEBUG]   - " .. img_path)
+                        else
+                            print("[DEBUG] Node #" .. i .. " has no 'image' property")
+                        end
+                    end
+                else
+                    print("[WARNING] image_nodes is not a table, it's: " .. type(image_nodes))
+                end
+
+                local transactions = {}
+                local added_count = 0
+                local skipped_count = 0
+
+                for i = 1, #selection do
+                    local png_path = editor.get(selection[i], "path")
+                    print("[DEBUG] Processing: " .. png_path)
+
+                    if existing_images[png_path] then
+                        skipped_count = skipped_count + 1
+                        print("[DEBUG]   ✗ SKIPPED (already exists)")
+                    else
+                        table.insert(transactions, editor.tx.add(atlas_path, "images", {image = png_path}))
+                        added_count = added_count + 1
+                        print("[DEBUG]   ✓ ADDED")
+                    end
+                end
+
+                print("[DEBUG] Summary: Added=" .. added_count .. " Skipped=" .. skipped_count)
+
+                if added_count > 0 then
+                    editor.transact(transactions)
+                    print("[SUCCESS] Added " .. added_count .. " image(s) to atlas: " .. atlas_path)
+                else
+                    print("[WARNING] No new images added")
+                end
+            end
+        },
+        {
+            label = "Add PNG as Animation",
+            locations = {"Assets"},
+            query = {
+                selection = {type = "resource", cardinality = "many"}
+            },
+            active = function(opts)
+                local selection = opts.selection
+                if #selection == 0 then return false end
+                for i = 1, #selection do
+                    if not string.match(editor.get(selection[i], "path"), "%.png$") then return false end
+                end
+                return true
+            end,
+            run = function(opts)
+                local selection = opts.selection
+                print("[DEBUG] === Add PNG as Animation ===")
+                print("[DEBUG] Selected files count: " .. #selection)
+
+                for i = 1, #selection do
+                    print("[DEBUG] File #" .. i .. ": " .. editor.get(selection[i], "path"))
+                end
+
+                local atlas_path = editor.ui.show_resource_dialog({
+                    title = "Select Atlas",
+                    extension = "atlas",
+                    selection_mode = "single"
+                })
+
+                if not atlas_path then
+                    print("[DEBUG] Atlas selection cancelled")
+                    return
+                end
+
+                print("[DEBUG] Selected atlas: " .. atlas_path)
+
+                -- Берем имя анимации из первого файла
+                local first_png = editor.get(selection[1], "path")
+                print("[DEBUG] First file: " .. first_png)
+
+                local anim_id = string.match(first_png, "([^/]+)_?%d*%.png$") or string.match(first_png, "([^/]+)%.png$")
+                print("[DEBUG] Generated animation ID: " .. (anim_id or "ERROR"))
+
+                -- Проверяем, существует ли уже такая анимация
+                if not editor.can_get(atlas_path, "animations") then
+                    print("[ERROR] Atlas does not have 'animations' property!")
+                    return
+                end
+
+                local animations = editor.get(atlas_path, "animations") or {}
+                print("[DEBUG] Checking existing animations: " .. #animations)
+
+                for i = 1, #animations do
+                    if editor.can_get(animations[i], "id") then
+                        local existing_id = editor.get(animations[i], "id")
+                        print("[DEBUG]   - " .. existing_id)
+
+                        if existing_id == anim_id then
+                            print("[ERROR] Animation '" .. anim_id .. "' already exists!")
+                            return
+                        end
+                    end
+                end
+
+                -- Собираем пути всех выбранных изображений для анимации
+                local animation_frames = {}
+
+                for i = 1, #selection do
+                    local png_path = editor.get(selection[i], "path")
+                    print("[DEBUG] Adding frame #" .. i .. ": " .. png_path)
+                    table.insert(animation_frames, {image = png_path})
+                end
+
+                print("[DEBUG] Creating animation with " .. #animation_frames .. " frames")
+
+                -- Создаем ТОЛЬКО анимацию
+                local anim_transactions = {}
+                table.insert(anim_transactions, editor.tx.add(atlas_path, "animations", {
+                    id = anim_id,
+                    images = animation_frames,
+                    playback = "playback-loop-forward",
+                    fps = 10
+                }))
+
+                editor.transact(anim_transactions)
+                print("[SUCCESS] Created animation '" .. anim_id .. "' with " .. #animation_frames .. " frames")
+            end
+        }
+    }
+end
+
+return M

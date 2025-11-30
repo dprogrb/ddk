@@ -11,7 +11,7 @@ end
 function M.get_commands()
     return {
         {
-            label = "Удалить все комментарии",
+            label = "Delete all comments",
             locations = {"Assets"},
             query = {
                 selection = { type = "resource", cardinality = "one" }
@@ -49,7 +49,7 @@ function M.get_commands()
             end
         },
         {
-            label = "Удалить все print",
+            label = "Delete all prints",
             locations = {"Assets"},
             query = {
                 selection = { type = "resource", cardinality = "one" }
@@ -87,7 +87,7 @@ function M.get_commands()
             end
         },
         {
-            label = "Закомментировать все print",
+            label = "Comment out all print statements",
             locations = {"Assets"},
             query = {
                 selection = { type = "resource", cardinality = "one" }
@@ -129,7 +129,7 @@ function M.get_commands()
             end
         },
         {
-            label = "Удалить всё содержимое",
+            label = "Remove all requirements",
             locations = {"Assets"},
             query = {
                 selection = { type = "resource", cardinality = "one" }
