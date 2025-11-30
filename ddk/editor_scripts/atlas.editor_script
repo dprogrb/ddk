@@ -86,10 +86,12 @@ function M.get_commands()
                 end
 
                 print("[DEBUG] Summary: Added=" .. added_count .. " Skipped=" .. skipped_count)
+                print("[DEBUG] Atlas location: " .. atlas_path)
 
                 if added_count > 0 then
                     editor.transact(transactions)
-                    print("[SUCCESS] Added " .. added_count .. " image(s) to atlas: " .. atlas_path)
+                    print("[SUCCESS] Added " .. added_count .. " image(s)")
+                    print("[SUCCESS] Atlas: " .. atlas_path)
                 else
                     print("[WARNING] No new images added")
                 end
@@ -172,6 +174,7 @@ function M.get_commands()
                 end
 
                 print("[DEBUG] Creating animation with " .. #animation_frames .. " frames")
+                print("[DEBUG] Atlas location: " .. atlas_path)
 
                 -- Создаем ТОЛЬКО анимацию
                 local anim_transactions = {}
@@ -184,6 +187,7 @@ function M.get_commands()
 
                 editor.transact(anim_transactions)
                 print("[SUCCESS] Created animation '" .. anim_id .. "' with " .. #animation_frames .. " frames")
+                print("[SUCCESS] Atlas: " .. atlas_path)
             end
         }
     }
