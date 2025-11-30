@@ -3,7 +3,7 @@ local M = {}
 function M.get_commands()
     return {
         {
-            label = "Add PNG as Image",
+            label = "Add Image as Image",
             locations = {"Assets"},
             query = {
                 selection = {type = "resource", cardinality = "many"}
@@ -12,13 +12,16 @@ function M.get_commands()
                 local selection = opts.selection
                 if #selection == 0 then return false end
                 for i = 1, #selection do
-                    if not string.match(editor.get(selection[i], "path"), "%.png$") then return false end
+                    local path = editor.get(selection[i], "path")
+                    if not (string.match(path, "%.png$") or string.match(path, "%.jpg$") or string.match(path, "%.jpeg$")) then 
+                        return false 
+                    end
                 end
                 return true
             end,
             run = function(opts)
                 local selection = opts.selection
-                print("[DEBUG] === Add PNG as Image ===")
+                print("[DEBUG] === Add Image as Image ===")
                 print("[DEBUG] Selected files count: " .. #selection)
 
                 local atlas_path = editor.ui.show_resource_dialog({
@@ -69,14 +72,14 @@ function M.get_commands()
                 local skipped_count = 0
 
                 for i = 1, #selection do
-                    local png_path = editor.get(selection[i], "path")
-                    print("[DEBUG] Processing: " .. png_path)
+                    local img_path = editor.get(selection[i], "path")
+                    print("[DEBUG] Processing: " .. img_path)
 
-                    if existing_images[png_path] then
+                    if existing_images[img_path] then
                         skipped_count = skipped_count + 1
                         print("[DEBUG]   ✗ SKIPPED (already exists)")
                     else
-                        table.insert(transactions, editor.tx.add(atlas_path, "images", {image = png_path}))
+                        table.insert(transactions, editor.tx.add(atlas_path, "images", {image = img_path}))
                         added_count = added_count + 1
                         print("[DEBUG]   ✓ ADDED")
                     end
@@ -93,7 +96,7 @@ function M.get_commands()
             end
         },
         {
-            label = "Add PNG as Animation",
+            label = "Add Image as Animation",
             locations = {"Assets"},
             query = {
                 selection = {type = "resource", cardinality = "many"}
@@ -102,13 +105,16 @@ function M.get_commands()
                 local selection = opts.selection
                 if #selection == 0 then return false end
                 for i = 1, #selection do
-                    if not string.match(editor.get(selection[i], "path"), "%.png$") then return false end
+                    local path = editor.get(selection[i], "path")
+                    if not (string.match(path, "%.png$") or string.match(path, "%.jpg$") or string.match(path, "%.jpeg$")) then 
+                        return false 
+                    end
                 end
                 return true
             end,
             run = function(opts)
                 local selection = opts.selection
-                print("[DEBUG] === Add PNG as Animation ===")
+                print("[DEBUG] === Add Image as Animation ===")
                 print("[DEBUG] Selected files count: " .. #selection)
 
                 for i = 1, #selection do
@@ -129,10 +135,10 @@ function M.get_commands()
                 print("[DEBUG] Selected atlas: " .. atlas_path)
 
                 -- Берем имя анимации из первого файла
-                local first_png = editor.get(selection[1], "path")
-                print("[DEBUG] First file: " .. first_png)
+                local first_img = editor.get(selection[1], "path")
+                print("[DEBUG] First file: " .. first_img)
 
-                local anim_id = string.match(first_png, "([^/]+)_?%d*%.png$") or string.match(first_png, "([^/]+)%.png$")
+                local anim_id = string.match(first_img, "([^/]+)_?%d*%.%w+$") or string.match(first_img, "([^/]+)%.%w+$")
                 print("[DEBUG] Generated animation ID: " .. (anim_id or "ERROR"))
 
                 -- Проверяем, существует ли уже такая анимация
@@ -160,9 +166,9 @@ function M.get_commands()
                 local animation_frames = {}
 
                 for i = 1, #selection do
-                    local png_path = editor.get(selection[i], "path")
-                    print("[DEBUG] Adding frame #" .. i .. ": " .. png_path)
-                    table.insert(animation_frames, {image = png_path})
+                    local img_path = editor.get(selection[i], "path")
+                    print("[DEBUG] Adding frame #" .. i .. ": " .. img_path)
+                    table.insert(animation_frames, {image = img_path})
                 end
 
                 print("[DEBUG] Creating animation with " .. #animation_frames .. " frames")
