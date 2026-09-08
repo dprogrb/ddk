@@ -35,5 +35,7 @@ Select an gui scene and choose option from context menu: Generate GUI script (Au
 ## comments_cleaner.editor_script
 
 Removal of comments and lines starting with `print()` from Lua script files (render, gui, editor, defold).
+
 ![Screenshot_4](ddk/images/commecnt_cleaner_img_1.png)
+
 **WARNING: At present, the removal of multi-line comments is not being applied.**
