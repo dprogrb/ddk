@@ -3,7 +3,7 @@ local M = {}
 function M.get_commands()
     return {
         {
-            label = "Add Image as Image",
+            label = "Add Image as Image in Atlas",
             locations = {"Assets"},
             query = {
                 selection = {type = "resource", cardinality = "many"}
@@ -21,7 +21,7 @@ function M.get_commands()
             end,
             run = function(opts)
                 local selection = opts.selection
-                print("[DEBUG] === Add Image as Image ===")
+                print("[DEBUG] === Add Image as Image in Atlas ===")
                 print("[DEBUG] Selected files count: " .. #selection)
 
                 local atlas_path = editor.ui.show_resource_dialog({
@@ -98,7 +98,7 @@ function M.get_commands()
             end
         },
         {
-            label = "Add Image as Animation",
+            label = "Add Image as Animation in Atlas",
             locations = {"Assets"},
             query = {
                 selection = {type = "resource", cardinality = "many"}
@@ -116,7 +116,7 @@ function M.get_commands()
             end,
             run = function(opts)
                 local selection = opts.selection
-                print("[DEBUG] === Add Image as Animation ===")
+                print("[DEBUG] === Add Image as Animation in Atlas ===")
                 print("[DEBUG] Selected files count: " .. #selection)
 
                 for i = 1, #selection do

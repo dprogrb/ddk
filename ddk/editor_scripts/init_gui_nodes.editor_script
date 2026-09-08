@@ -1,0 +1,249 @@
+local M = {}
+
+------------------------------------------------------------
+-- Get GUI nodes
+------------------------------------------------------------
+
+local function get_gui_nodes(gui_path)
+    local result = {}
+
+    local function collect(nodes)
+        if not nodes then
+            return
+        end
+
+        for _, node in ipairs(nodes) do
+            local id = nil
+            local node_type = nil
+
+            if editor.can_get(node, "id") then
+                id = editor.get(node, "id")
+            end
+
+            if editor.can_get(node, "type") then
+                node_type = editor.get(node, "type")
+            end
+
+            if id and id ~= "" then
+                table.insert(result, {
+                    id = id,
+                    type = node_type or "unknown"
+                })
+            end
+
+            if editor.can_get(node, "nodes") then
+                local children = editor.get(node, "nodes")
+                if children then
+                    collect(children)
+                end
+            end
+        end
+    end
+
+    local nodes = editor.get(gui_path, "nodes")
+    collect(nodes)
+    return result
+end
+
+
+------------------------------------------------------------
+-- Convert node name to valid Lua variable name
+------------------------------------------------------------
+
+local function make_variable_name(name)
+    local result = name:gsub("[^%w_]", "_")
+
+    if result:match("^%d") then
+        result = "_" .. result
+    end
+
+    if result == "" then
+        result = "_node"
+    end
+
+    return result
+end
+
+
+------------------------------------------------------------
+-- Generate .gui_script (for new files)
+------------------------------------------------------------
+
+local function generate_gui_script(nodes, output_path)
+    local lines = {}
+
+    table.insert(lines, "-- Auto-generated GUI script")
+    table.insert(lines, "-- DO NOT EDIT MANUALLY")
+    table.insert(lines, "")
+    table.insert(lines, "function init(self)")
+
+    for _, node in ipairs(nodes) do
+        local id = node.id
+        local var_name = make_variable_name(id)
+        table.insert(lines, string.format('    self.%s = gui.get_node("%s") -- %s', var_name, id, node.type))
+    end
+
+    table.insert(lines, "end")
+    table.insert(lines, "")
+    table.insert(lines, "function final(self)")
+    table.insert(lines, "end")
+    table.insert(lines, "")
+    table.insert(lines, "function update(self, dt)")
+    table.insert(lines, "end")
+    table.insert(lines, "")
+    table.insert(lines, "function on_message(self, message_id, message, sender)")
+    table.insert(lines, "end")
+    table.insert(lines, "")
+    table.insert(lines, "function on_input(self, action_id, action)")
+    table.insert(lines, "end")
+    table.insert(lines, "")
+    table.insert(lines, "function on_reload(self)")
+    table.insert(lines, "end")
+
+    local file = io.open(output_path, "w")
+    if not file then return false end
+
+    file:write(table.concat(lines, "\n"))
+    file:close()
+    return true
+end
+
+
+------------------------------------------------------------
+-- Editor commands
+------------------------------------------------------------
+
+function M.get_commands()
+    return {
+        editor.command({
+            label = "Auto-init nodes",
+            locations = {"Assets"},
+            query = {
+                selection = {
+                    type = "resource",
+                    cardinality = "one"
+                }
+            },
+            active = function(opts)
+                if not opts.selection then return false end
+                local path = editor.get(opts.selection, "path")
+                return path and path:match("%.gui$") ~= nil
+            end,
+            run = function(opts)
+
+                ------------------------------------------------
+                -- Get GUI path and nodes
+                ------------------------------------------------
+                local path = editor.get(opts.selection, "path")
+                if not path or not path:match("%.gui$") then
+                    print("[GUI Generator] Selected resource is not a valid GUI.")
+                    return
+                end
+
+                local nodes = get_gui_nodes(path)
+                if not nodes or #nodes == 0 then
+                    print("[GUI Generator] GUI contains no nodes.")
+                    return
+                end
+
+                print("[GUI Generator] Found " .. #nodes .. " GUI nodes in " .. path)
+
+                ------------------------------------------------
+                -- Determine target script path
+                ------------------------------------------------
+                -- Check if a script is already attached to the GUI component
+                local attached_script = editor.get(path, "script")
+                local target_script_path
+
+                if attached_script and attached_script ~= "" then
+                    target_script_path = attached_script
+                else
+                    -- Fallback to default naming if no script is attached
+                    target_script_path = path:gsub("%.gui$", ".gui_script")
+                end
+
+                -- Convert editor path to system path
+                if target_script_path:sub(1, 1) == "/" then
+                    target_script_path = target_script_path:sub(2)
+                end
+
+                ------------------------------------------------
+                -- Check if script file already exists on disk
+                ------------------------------------------------
+                local file = io.open(target_script_path, "r")
+
+                if file then
+                    -- File exists! We need to parse it and add missing nodes.
+                    local content = file:read("*a")
+                    file:close()
+
+                    -- 1. Find all existing nodes using regex
+                    local existing_nodes = {}
+                    for match in content:gmatch('gui%.get_node%(%s*["\']([^"\']+)["\']%s*%)') do
+                        existing_nodes[match] = true
+                    end
+
+                    -- 2. Find missing nodes
+                    local missing_nodes = {}
+                    for _, node in ipairs(nodes) do
+                        if not existing_nodes[node.id] then
+                            table.insert(missing_nodes, node)
+                        end
+                    end
+
+                    if #missing_nodes == 0 then
+                        print("[GUI Generator] All nodes are already initialized in " .. target_script_path)
+                        return
+                    end
+
+                    -- 3. Prepare text to insert
+                    local insert_text = ""
+                    for _, node in ipairs(missing_nodes) do
+                        local var_name = make_variable_name(node.id)
+                        insert_text = insert_text .. string.format('    self.%s = gui.get_node("%s") -- %s\n', var_name, node.id, node.type)
+                    end
+
+                    -- 4. Find 'function init(self)' and insert right after it
+                    local init_start = content:find("function%s+init%s*%(%s*self%s*%)")
+                    local new_content
+
+                    if init_start then
+                        local newline_pos = content:find("[\r\n]", init_start)
+                        if newline_pos then
+                            -- Insert immediately after the function declaration line
+                            new_content = content:sub(1, newline_pos) .. "\n" .. insert_text .. content:sub(newline_pos + 1)
+                        else
+                            new_content = content .. "\n" .. insert_text
+                        end
+                    else
+                        -- If init function doesn't exist, append a new one at the end of the file
+                        new_content = content .. "\n\nfunction init(self)\n" .. insert_text .. "end\n"
+                    end
+
+                    -- 5. Write back to the file
+                    local out_file = io.open(target_script_path, "w")
+                    if out_file then
+                        out_file:write(new_content)
+                        out_file:close()
+                        print("[GUI Generator] Successfully added " .. #missing_nodes .. " missing nodes to " .. target_script_path)
+                    else
+                        print("[GUI Generator] Failed to write to " .. target_script_path)
+                    end
+
+                    return
+                end
+
+                ------------------------------------------------
+                -- Generate new script if it doesn't exist
+                ------------------------------------------------
+                if generate_gui_script(nodes, target_script_path) then
+                    print("[GUI Generator] Generated new script " .. target_script_path .. " with " .. #nodes .. " nodes.")
+                else
+                    print("[GUI Generator] Failed to create " .. target_script_path)
+                end
+            end
+        })
+    }
+end
+
+return M
