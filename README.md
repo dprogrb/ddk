@@ -10,6 +10,7 @@ At the moment, DDK contains some editor scripts:
 
 
 --- 
+## Install
 
 Add in `game.project` in section `dependencies`: [releases versions](https://github.com/dprogrb/ddk/releases)
 
